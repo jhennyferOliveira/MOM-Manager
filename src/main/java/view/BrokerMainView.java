@@ -1,25 +1,34 @@
 package view;
 
+import controller.BrokerViewController;
 import view.extensions.ButtonEditor;
 import view.extensions.ButtonRenderer;
 import view.extensions.CustomColor;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.util.Objects;
 
 public class BrokerMainView {
 
-    public JFrame frame = new JFrame("Broker Management");
-    JPanel secondaryPanel = new JPanel();
-    DefaultTableModel clientModel = new DefaultTableModel();
-    JTable clientTable;
-    DefaultTableModel topicModel = new DefaultTableModel();
-    JTable topicTable;
-    DefaultTableModel queueModel = new DefaultTableModel();
-    JTable queueTable;
+    public enum TableType {
+        Client("Client"), Topic("Topic"), Queue("Queue");
+
+        public final String type;
+        TableType(String level) {
+            this.type = level;
+        }
+    }
+
+    private JFrame frame = new JFrame("Broker Management");
+    private JPanel secondaryPanel = new JPanel();
+    private DefaultTableModel clientModel = new DefaultTableModel();
+    private JTable clientTable;
+    private DefaultTableModel topicModel = new DefaultTableModel();
+    private JTable topicTable;
+    private DefaultTableModel queueModel = new DefaultTableModel();
+    private static JTable queueTable;
+
     public void setUpFrame() throws UnsupportedLookAndFeelException, ClassNotFoundException, InstantiationException, IllegalAccessException {
         UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -84,14 +93,15 @@ public class BrokerMainView {
         queueButton.setFont(new Font("Inter", Font.BOLD, 15));
         queueButton.setBackground(CustomColor.green);
         queueButton.addActionListener(e -> {
-            showCreateForm("Create Queue", "Queue name", queueModel, queueTable);
+            showCreateForm("Create Queue", "Queue name", queueModel, queueTable, TableType.Queue);
         });
         secondaryPanel.add(queueButton);
 
         // Create the table
         queueModel.addColumn("Queues");
         queueModel.addColumn("Messages");
-        queueModel.addColumn("Actions");
+        queueModel.addColumn("Action 1");
+        queueModel.addColumn("Action 2");
 
         queueTable = new JTable(queueModel);
         queueTable.setRowSelectionAllowed(false);
@@ -123,15 +133,13 @@ public class BrokerMainView {
         topicButton.setFont(new Font("Inter", Font.BOLD, 15));
         topicButton.setBackground(CustomColor.green);
         topicButton.addActionListener(e -> {
-            showCreateForm("Create Topic", "Topic name", topicModel, topicTable);
+            showCreateForm("Create Topic", "Topic name", topicModel, topicTable, TableType.Topic);
         });
         secondaryPanel.add(topicButton);
 
-
         // Create the table
         topicModel.addColumn("Topics");
-        topicModel.addColumn("Messages");
-        topicModel.addColumn("Actions");
+        topicModel.addColumn("Action");
 
         topicTable = new JTable(topicModel);
         topicTable.setBounds(498, 179, 354, 72);
@@ -176,16 +184,22 @@ public class BrokerMainView {
         secondaryPanel.add(scrollPane);
     }
 
-
-    private void addRow(DefaultTableModel model, JTable table, Object[] rowData, Boolean isClientTable) {
+    private void addRow(DefaultTableModel model, JTable table, Object[] rowData, TableType tableType) {
         model.addRow(rowData);
-        if (!isClientTable) {
-            table.getColumnModel().getColumn(2).setCellRenderer(new ButtonRenderer());
-            table.getColumnModel().getColumn(2).setCellEditor(new ButtonEditor(new JCheckBox(), table));
+        switch (tableType) {
+            case Queue -> {
+                table.getColumnModel().getColumn(2).setCellRenderer(new ButtonRenderer(false));
+                table.getColumnModel().getColumn(2).setCellEditor(new ButtonEditor(new JCheckBox(), table, false));
+                table.getColumnModel().getColumn(3).setCellRenderer(new ButtonRenderer(true));
+                table.getColumnModel().getColumn(3).setCellEditor(new ButtonEditor(new JCheckBox(), table,true));
+            }
+            case Topic -> {
+                table.getColumnModel().getColumn(1).setCellRenderer(new ButtonRenderer(true));
+                table.getColumnModel().getColumn(1).setCellEditor(new ButtonEditor(new JCheckBox(), table, true));}
         }
     }
 
-    public void showCreateForm(String title, String parameterName, DefaultTableModel model, JTable table) {
+    public void showCreateForm(String title, String parameterName, DefaultTableModel model, JTable table, TableType tableType) {
         var parameterNameTextField = new JTextField();
         Object[] fields = {
                 parameterName, parameterNameTextField
@@ -193,14 +207,37 @@ public class BrokerMainView {
         int option = JOptionPane.showConfirmDialog(frame, fields,title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 
         if (option == JOptionPane.OK_OPTION) {
-            String enteredName = parameterNameTextField.getText();
-            addRow(model, table, new Object[]{enteredName}, false);
+            var enteredName = parameterNameTextField.getText();
+            if (tableType.type.equalsIgnoreCase(TableType.Client.type)) {
+                BrokerViewController.createQueue(enteredName);
+            } else {
+                BrokerViewController.createTopic(enteredName);
+            }
+            addRow(model, table, new Object[]{enteredName, 0}, tableType);
         }
     }
 
+    public static void updatePendingMessages(String queueName) {
+        var pendingCount = BrokerViewController.updatePendingMessages(queueName);
+        var row = 0;
+        var column = 0; // queue name column
+        for (int i = queueTable.getRowCount() - 1; i >= 0; --i) {
+            if (queueTable.getValueAt(i, column).equals(queueName)) {
+                row = i;
+                System.out.println("achou a queue");
+            }
+        }
+        int finalRow = row;
+        SwingUtilities.invokeLater(() -> {
+            queueTable.setValueAt(pendingCount, finalRow, 1);
+        });
+    }
+
+
+
     public void showCreateClientForm(DefaultTableModel model, JTable table) {
         var clientName = new JTextField();
-        String[] options = {"Consumer", "Productor", "Subscriber", "Publisher"};
+        String[] options = {"Consumer", "Producer", "Subscriber", "Publisher"};
         JComboBox<String> comboBox = new JComboBox<>(options);
 
         Object[] fields = {
@@ -212,7 +249,7 @@ public class BrokerMainView {
         if (option == JOptionPane.OK_OPTION) {
             String enteredName = clientName.getText();
             String enteredType = Objects.requireNonNull(comboBox.getSelectedItem()).toString();
-            addRow(model, table, new Object[]{enteredName, enteredType}, true);
+            addRow(model, table, new Object[]{enteredName, enteredType}, TableType.Client);
         }
     }
 }

@@ -1,12 +1,16 @@
 package view;
 
 import controller.BrokerViewController;
+import network.ConnectionHandler;
 import view.extensions.ButtonEditor;
 import view.extensions.ButtonRenderer;
 import view.extensions.CustomColor;
+
+import javax.jms.JMSException;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.util.HashMap;
 import java.util.Objects;
 
 public class BrokerMainView {
@@ -22,12 +26,14 @@ public class BrokerMainView {
 
     private JFrame frame = new JFrame("Broker Management");
     private JPanel secondaryPanel = new JPanel();
-    private DefaultTableModel clientModel = new DefaultTableModel();
-    private JTable clientTable;
-    private DefaultTableModel topicModel = new DefaultTableModel();
-    private JTable topicTable;
-    private DefaultTableModel queueModel = new DefaultTableModel();
-    private static JTable queueTable;
+    public static DefaultTableModel clientModel = new DefaultTableModel();
+    public static JTable clientTable;
+    public static DefaultTableModel topicModel = new DefaultTableModel();
+    public static JTable topicTable;
+    public static DefaultTableModel queueModel = new DefaultTableModel();
+    public static JTable queueTable;
+
+    public static HashMap<String, ClientsView> clientsView = new HashMap<>();
 
     public void setUpFrame() throws UnsupportedLookAndFeelException, ClassNotFoundException, InstantiationException, IllegalAccessException {
         UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
@@ -184,7 +190,7 @@ public class BrokerMainView {
         secondaryPanel.add(scrollPane);
     }
 
-    private void addRow(DefaultTableModel model, JTable table, Object[] rowData, TableType tableType) {
+    public static void addRow(DefaultTableModel model, JTable table, Object[] rowData, TableType tableType) {
         model.addRow(rowData);
         switch (tableType) {
             case Queue -> {
@@ -208,7 +214,7 @@ public class BrokerMainView {
 
         if (option == JOptionPane.OK_OPTION) {
             var enteredName = parameterNameTextField.getText();
-            if (tableType.type.equalsIgnoreCase(TableType.Client.type)) {
+            if (tableType.type.equalsIgnoreCase(TableType.Queue.type)) {
                 BrokerViewController.createQueue(enteredName);
             } else {
                 BrokerViewController.createTopic(enteredName);
@@ -237,19 +243,37 @@ public class BrokerMainView {
 
     public void showCreateClientForm(DefaultTableModel model, JTable table) {
         var clientName = new JTextField();
-        String[] options = {"Consumer", "Producer", "Subscriber", "Publisher"};
+        var clientQueue = new JTextField();
+        String[] options = {"Consumer/Producer", "Subscriber", "Publisher"};
         JComboBox<String> comboBox = new JComboBox<>(options);
 
         Object[] fields = {
                 "Client name", clientName,
-                "Client type", comboBox
+                "Client type", comboBox,
+                "Client queue", clientQueue
         };
         int option = JOptionPane.showConfirmDialog(frame, fields,"Create Client", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 
         if (option == JOptionPane.OK_OPTION) {
             String enteredName = clientName.getText();
+            String enteredClientQueue = clientQueue.getText();
             String enteredType = Objects.requireNonNull(comboBox.getSelectedItem()).toString();
             addRow(model, table, new Object[]{enteredName, enteredType}, TableType.Client);
+
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    var client = new ClientsView();
+                    client.setUpFrame(enteredType , enteredName);
+                    clientsView.put(enteredName, client);
+                    if (enteredType.equalsIgnoreCase("Consumer/Producer")) {
+                        ConnectionHandler.createConsumerClient(enteredClientQueue, enteredName);
+                    }
+                } catch (UnsupportedLookAndFeelException | ClassNotFoundException | InstantiationException |
+                         IllegalAccessException | JMSException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
         }
     }
 }

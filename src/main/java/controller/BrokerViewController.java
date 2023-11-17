@@ -1,6 +1,6 @@
 package controller;
 
-import network.ConnectionHandler;
+import network.MessageHandler;
 import view.BrokerMainView;
 import view.ClientsView;
 
@@ -12,7 +12,7 @@ public class BrokerViewController {
 
     public static void createQueue(String name) {
         try {
-            ConnectionHandler.createQueue(name);
+            MessageHandler.createQueue(name);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -20,7 +20,7 @@ public class BrokerViewController {
 
     public static void createTopic(String name) {
         try {
-            ConnectionHandler.createTopic(name);
+            MessageHandler.createTopic(name);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -28,7 +28,7 @@ public class BrokerViewController {
 
     public static void deleteQueue(String name) {
         try {
-            ConnectionHandler.deleteQueue(name);
+            MessageHandler.deleteQueue(name);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -36,16 +36,32 @@ public class BrokerViewController {
 
     public static void deleteTopic(String name) {
         try {
-            ConnectionHandler.deleteTopic(name);
+            MessageHandler.deleteTopic(name);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
     }
 
+    public static void deleteConsumer(String name) {
+        try {
+            MessageHandler.deleteConsumer(name);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    public static void createConsumer(String clientQueue, String clientName) throws JMSException {
+        MessageHandler.createConsumerClient(clientQueue, clientName);
+    }
+
+    public static void createSubscriber(String topicName, String clientName) throws Exception {
+        MessageHandler.createSubscriber(topicName, clientName);
+    }
+
     public static Long updatePendingMessages(String queueName) {
         var messageCount = 0L;
         try {
-            messageCount = ConnectionHandler.getMessageCount(queueName);
+            messageCount = MessageHandler.getMessageCount(queueName);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -71,11 +87,10 @@ public class BrokerViewController {
     }
 
     public static void sendMessageToTopic(String topicName, String message) throws JMSException {
-        ConnectionHandler.sendMessageToTopic(topicName, message);
+        MessageHandler.sendMessageToTopic(topicName, message);
     }
 
     public static void sendMessageToQueue(String queueName, String message) throws JMSException {
-        ConnectionHandler.sendMessageToQueue(queueName, message);
+        MessageHandler.sendMessageToQueue(queueName, message);
     }
-
 }

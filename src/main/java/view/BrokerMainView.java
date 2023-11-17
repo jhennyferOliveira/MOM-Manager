@@ -1,7 +1,6 @@
 package view;
 
 import controller.BrokerViewController;
-import network.ConnectionHandler;
 import view.extensions.ButtonEditor;
 import view.extensions.ButtonRenderer;
 import view.extensions.CustomColor;
@@ -24,8 +23,8 @@ public class BrokerMainView {
         }
     }
 
-    private JFrame frame = new JFrame("Broker Management");
-    private JPanel secondaryPanel = new JPanel();
+    private final JFrame frame = new JFrame("Broker Management");
+    private final JPanel secondaryPanel = new JPanel();
     public static DefaultTableModel clientModel = new DefaultTableModel();
     public static JTable clientTable;
     public static DefaultTableModel topicModel = new DefaultTableModel();
@@ -98,9 +97,7 @@ public class BrokerMainView {
         queueButton.setOpaque(true);
         queueButton.setFont(new Font("Inter", Font.BOLD, 15));
         queueButton.setBackground(CustomColor.green);
-        queueButton.addActionListener(e -> {
-            showCreateForm("Create Queue", "Queue name", queueModel, queueTable, TableType.Queue);
-        });
+        queueButton.addActionListener(e -> showCreateForm("Create Queue", "Queue name", queueModel, queueTable, TableType.Queue));
         secondaryPanel.add(queueButton);
 
         // Create the table
@@ -138,9 +135,7 @@ public class BrokerMainView {
         topicButton.setOpaque(true);
         topicButton.setFont(new Font("Inter", Font.BOLD, 15));
         topicButton.setBackground(CustomColor.green);
-        topicButton.addActionListener(e -> {
-            showCreateForm("Create Topic", "Topic name", topicModel, topicTable, TableType.Topic);
-        });
+        topicButton.addActionListener(e -> showCreateForm("Create Topic", "Topic name", topicModel, topicTable, TableType.Topic));
         secondaryPanel.add(topicButton);
 
         // Create the table
@@ -173,9 +168,7 @@ public class BrokerMainView {
         clientButton.setOpaque(true);
         clientButton.setFont(new Font("Inter", Font.BOLD, 15));
         clientButton.setBackground(CustomColor.green);
-        clientButton.addActionListener(e -> {
-            showCreateClientForm( clientModel, clientTable);
-        });
+        clientButton.addActionListener(e -> showCreateClientForm( clientModel, clientTable));
         secondaryPanel.add(clientButton);
 
         // Configure table
@@ -230,13 +223,11 @@ public class BrokerMainView {
         for (int i = queueTable.getRowCount() - 1; i >= 0; --i) {
             if (queueTable.getValueAt(i, column).equals(queueName)) {
                 row = i;
-                System.out.println("achou a queue");
+                System.out.println("pending messages: " + pendingCount);
             }
         }
         int finalRow = row;
-        SwingUtilities.invokeLater(() -> {
-            queueTable.setValueAt(pendingCount, finalRow, 1);
-        });
+        SwingUtilities.invokeLater(() -> queueTable.setValueAt(pendingCount, finalRow, 1));
     }
 
 
@@ -266,7 +257,7 @@ public class BrokerMainView {
                     client.setUpFrame(enteredType , enteredName);
                     clientsView.put(enteredName, client);
                     if (enteredType.equalsIgnoreCase("Consumer/Producer")) {
-                        ConnectionHandler.createConsumerClient(enteredClientQueue, enteredName);
+                        BrokerViewController.createConsumer(enteredClientQueue, enteredName);
                     }
                 } catch (UnsupportedLookAndFeelException | ClassNotFoundException | InstantiationException |
                          IllegalAccessException | JMSException e) {

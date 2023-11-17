@@ -1,15 +1,17 @@
 package view;
 
 import controller.BrokerViewController;
-import network.ConnectionHandler;
 import view.extensions.CustomColor;
-
 import javax.swing.*;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
 
 public class ClientsView {
@@ -27,13 +29,35 @@ public class ClientsView {
         UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
         this.clientType = clientType;
         this.clientName = clientName;
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                var clientTable = BrokerMainView.clientTable;
+
+                for (int i = 0; i < clientTable.getRowCount(); i++) {
+                    if (Objects.equals(clientTable.getValueAt(i, 0).toString(), clientName)) {
+                        BrokerMainView.clientModel.removeRow(i);
+                        break; // Exit loop after removing the row
+                    }
+                }
+
+                BrokerViewController.deleteConsumer(clientName);
+
+                Iterator<Map.Entry<String, ClientsView>> iterator = BrokerMainView.clientsView.entrySet().iterator();
+                while (iterator.hasNext()) {
+                    Map.Entry<String, ClientsView> entry = iterator.next();
+                    if (entry.getKey().equalsIgnoreCase(clientName)) {
+                        iterator.remove(); // Use iterator's remove method to safely remove the entry
+                        break; // Exit loop after removing the entry
+                    }
+                }
+            }
+        });
         frame.setVisible(true);
         int frameWidth = 620;
         int frameHeight = 790;
         frame.setSize(frameWidth, frameHeight);
         frame.getContentPane().setBackground(Color.WHITE);
-        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
         setUpSecondaryFrame();
         setUpSystemName(clientType, clientName);
@@ -167,7 +191,7 @@ public class ClientsView {
         if (option == JOptionPane.OK_OPTION) {
             String enteredName = topicName.getText();
             try {
-                ConnectionHandler.createSubscriber(enteredName, clientName);
+                BrokerViewController.createSubscriber(enteredName, clientName);
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
